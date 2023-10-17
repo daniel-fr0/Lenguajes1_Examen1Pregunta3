@@ -1,5 +1,6 @@
 from sys import argv
 from memory import Memory
+from Block import isPowerOf2
 
 def main(argv):
 	if len(argv) < 2:
@@ -11,7 +12,7 @@ def main(argv):
 		print("El numero de bloques debe ser mayor a 0")
 		return
 	
-	if size & (size-1) != 0:
+	if not isPowerOf2(size):
 		print("El numero de bloques debe ser una potencia de 2")
 		return
 	

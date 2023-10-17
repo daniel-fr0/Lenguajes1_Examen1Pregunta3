@@ -10,7 +10,8 @@ class TestBlock(unittest.TestCase):
 		self.assertEqual(block.name, None)
 		self.assertEqual(block.prev, None)
 		self.assertEqual(block.next, None)
-		self.assertEqual(len(block.side), 0)
+		self.assertEqual(block.parent, None)
+		self.assertEqual(block.side, None)
 	
 	def test_block_creation(self):
 		block = Block(8, 'test')
@@ -19,7 +20,8 @@ class TestBlock(unittest.TestCase):
 		self.assertEqual(block.name, 'test')
 		self.assertEqual(block.prev, None)
 		self.assertEqual(block.next, None)
-		self.assertEqual(len(block.side), 0)
+		self.assertEqual(block.parent, None)
+		self.assertEqual(block.side, None)
 
 	def test_block_split(self):
 		block = Block(8)
@@ -30,8 +32,8 @@ class TestBlock(unittest.TestCase):
 		self.assertEqual(left.name, None)
 		self.assertEqual(left.prev, None)
 		self.assertNotEqual(left.next, None)
-		self.assertEqual(len(left.side), 1)
-		self.assertEqual(left.side[0], 'left')
+		self.assertEqual(left.side, 'left')
+		self.assertEqual(left.parent, block)
 
 		right = left.next
 		self.assertEqual(right.size, 4)
@@ -39,12 +41,14 @@ class TestBlock(unittest.TestCase):
 		self.assertEqual(right.name, None)
 		self.assertEqual(right.prev, left)
 		self.assertEqual(right.next, None)
-		self.assertEqual(len(right.side), 1)
-		self.assertEqual(right.side[0], 'right')
+		self.assertEqual(right.side, 'right')
+		self.assertEqual(right.parent, block)
 
 		# Se verifica que los bloques esten asignados como compañeros
 		self.assertEqual(left.getBuddy(), right)
 		self.assertEqual(right.getBuddy(), left)
+		self.assertEqual(block.left, left)
+		self.assertEqual(block.right, right)
 
 	def test_block_split_twice(self):
 		block = Block(16)
@@ -61,7 +65,7 @@ class TestBlock(unittest.TestCase):
 			self.assertEqual(x.size, 4)
 			self.assertEqual(x.used, 0)
 			self.assertEqual(x.name, None)
-			self.assertEqual(len(x.side), 2)
+			self.assertEqual(x.parent.parent, block)
 
 		# Se verifica que los bloques estén enlazados de ida
 		self.assertEqual(a.next, b)
@@ -76,10 +80,10 @@ class TestBlock(unittest.TestCase):
 		self.assertEqual(d.prev, c)
 
 		# Se verifican los roles de los bloques
-		self.assertEqual(a.side, ['left', 'left'])
-		self.assertEqual(b.side, ['left', 'right'])
-		self.assertEqual(c.side, ['right', 'left'])
-		self.assertEqual(d.side, ['right', 'right'])
+		self.assertEqual(a.side, 'left')
+		self.assertEqual(b.side, 'right')
+		self.assertEqual(c.side, 'left')
+		self.assertEqual(d.side, 'right')
 
 	def test_split_4_times(self):
 		block = Block(32)
@@ -109,7 +113,7 @@ class TestBlock(unittest.TestCase):
 			self.assertEqual(x.size, 4)
 			self.assertEqual(x.used, 0)
 			self.assertEqual(x.name, None)
-			self.assertEqual(len(x.side), 3)
+			self.assertEqual(x.parent.parent.parent, block)
 
 		# Se verifica que los bloques estén enlazados de ida
 		self.assertEqual(a.next, b)
@@ -132,17 +136,17 @@ class TestBlock(unittest.TestCase):
 		self.assertEqual(h.prev, g)
 
 		# Se verifican los roles de los bloques
-		self.assertEqual(a.side, ['left', 'left', 'left'])
-		self.assertEqual(b.side, ['left', 'left', 'right'])
+		self.assertEqual(a.side, 'left')
+		self.assertEqual(b.side, 'right')
 
-		self.assertEqual(c.side, ['left', 'right', 'left'])
-		self.assertEqual(d.side, ['left', 'right', 'right'])
+		self.assertEqual(c.side, 'left')
+		self.assertEqual(d.side, 'right')
 
-		self.assertEqual(e.side, ['right', 'left', 'left'])
-		self.assertEqual(f.side, ['right', 'left', 'right'])
+		self.assertEqual(e.side, 'left')
+		self.assertEqual(f.side, 'right')
 
-		self.assertEqual(g.side, ['right', 'right', 'left'])
-		self.assertEqual(h.side, ['right', 'right', 'right'])
+		self.assertEqual(g.side, 'left')
+		self.assertEqual(h.side, 'right')
 
 	def test_block_cant_join(self):
 		block = Block(8)
@@ -166,7 +170,9 @@ class TestBlock(unittest.TestCase):
 		self.assertEqual(parent.name, None)
 		self.assertEqual(parent.prev, None)
 		self.assertEqual(parent.next, None)
-		self.assertEqual(len(parent.side), 0)
+		self.assertEqual(parent.side, None)
+		self.assertEqual(parent.side, None)
+		self.assertEqual(parent.parent, None)
 
 	def test_block_join_left(self):
 		block = Block(8)
@@ -183,8 +189,7 @@ class TestBlock(unittest.TestCase):
 		self.assertEqual(parent.name, None)
 		self.assertEqual(parent.prev, None)
 		self.assertEqual(parent.next, right)
-		self.assertEqual(len(parent.side), 1)
-		self.assertEqual(parent.side[0], 'left')
+		self.assertEqual(parent.side, 'left')
 
 	def test_block_join_right(self):
 		block = Block(8)
@@ -201,8 +206,7 @@ class TestBlock(unittest.TestCase):
 		self.assertEqual(parent.name, None)
 		self.assertEqual(parent.prev, left)
 		self.assertEqual(parent.next, None)
-		self.assertEqual(len(parent.side), 1)
-		self.assertEqual(parent.side[0], 'right')		
+		self.assertEqual(parent.side, 'right')		
 
 		
 if __name__ == '__main__':

@@ -1,4 +1,4 @@
-from Block import Block
+from Block import Block, isPowerOf2
 from math import ceil, log2
 
 # Memory using buddy system
@@ -32,23 +32,44 @@ class Memory():
 				raise Exception("No quedan bloques libres de tamaño suficiente")
 			
 
-		# Se obtiene el bloque de tamaño adecuado
+		# Se obtiene el bloque de tamaño mas cercano
 		block = self.unasigned[i].pop(0)
 
-		# Se divide de ser posible hasta obtener el tamaño mas ajustado
-		while block.size//2 >= size:
-			block = block.split()
-			self.unasigned[i-1].append(block.next)
-			i -= 1
-
-		# Se reafirma la cabeza de la lista
-		if block.prev is None:
-			self.head = block
+		# Se ajusta el tamaño del bloque de ser necesario
+		block = self.fit(block, size)
 
 		# Se asigna el bloque
 		block.name = name
 		block.used = size
 		self.assigned[name] = block
+
+		return block
+	
+	def fit(self, block, size):
+		# Se divide de ser posible hasta obtener el tamaño mas ajustado
+		while block.size//2 >= size:
+			block = block.split()
+			self.unasigned[ceil(log2(block.size))].append(block.next)
+
+		# Se actualiza el tamaño usado y se desfragmenta si es necesario
+		block.used = size
+		if block.size > size:
+			block = block.split(defrag=True)
+			buddy = block.next
+
+			# Si el bloque compañero no es potencia de 2, se divide hasta que lo sea
+			while not isPowerOf2(buddy.size):
+				buddy = buddy.split()
+				# Se van agregando los sub-bloques a la lista de bloques libres
+				self.unasigned[ceil(log2(buddy.size))].append(buddy)
+				buddy = buddy.next
+
+			# Se agrega el compañero a la lista de bloques libres
+			self.unasigned[ceil(log2(buddy.size))].append(buddy)
+
+		# Se reafirma la cabeza de la lista
+		if block.prev is None:
+			self.head = block
 
 		return block
 	
@@ -61,23 +82,77 @@ class Memory():
 		block = self.assigned[name]
 
 		# Se libera el bloque
-		block.name = None
-		block.used = 0
+		block.free()
 		self.assigned.pop(name)
 		self.unasigned[ceil(log2(block.size))].append(block)
 
-		# Se une el bloque con sus compañeros mientras sea posible
+		# Se unen los bloques contiguos
+		block = self.joinContiguous(block)
+
+		# Si el bloque no es potencia de 2, se divide hasta que lo sea
+		while not isPowerOf2(block.size):
+			self.unasigned[ceil(log2(block.size))].remove(block)
+			block = block.split()
+			self.unasigned[ceil(log2(block.size))].append(block)
+			self.unasigned[ceil(log2(block.next.size))].append(block.next)
+
+			# Se asegura la cabeza de la lista
+			if block.prev is None:
+				self.head = block
+
+			block = block.next
+
+		return block
+
+	def joinContiguous(self, block):
+		# Se verifica que el bloque pueda unirse
+		if not block.parent or not block.parent.isFree():
+			return block
+		
+		# Se busca en el arbol un bloque que sea potencia de 2 y este libre
+		goal = block.parent
+		lastPowerOf2 = goal if isPowerOf2(goal.size) else None
+		while goal.parent and goal.parent.isFree():
+			goal = goal.parent
+			if isPowerOf2(goal.size):
+				lastPowerOf2 = goal
+
+		# Si no se encontro un bloque potencia de 2, se retorna el bloque
+		if not lastPowerOf2:
+			return block
+		
+		# Se ajusta el objetivo si no es potencia de 2
+		if not isPowerOf2(goal.size):
+			goal = lastPowerOf2
+				
+
 		buddy = block.getBuddy()
-		while buddy is not None:
-			self.unasigned[ceil(log2(buddy.size))].remove(block)
+		# Se une el bloque con su compañero hasta llegar al objetivo
+		while block != goal and buddy:
+
+			# El compañero esta particionado si no esta en la lista de bloques libres
+			if buddy not in self.unasigned[ceil(log2(buddy.size))]:
+					# Se junta la particion desde el primer bloque libre del compañero
+					if block.side == 'left':
+						return self.joinContiguous(block.next)
+					else:
+						return self.joinContiguous(block.prev)
+					
+			# Se eliminan los bloques de la lista de bloques libres
+			self.unasigned[ceil(log2(block.size))].remove(block)
 			self.unasigned[ceil(log2(buddy.size))].remove(buddy)
+
+			# Se unen los bloques y se asinan a la lista de bloques libres
 			block = block.join()
 			self.unasigned[ceil(log2(block.size))].append(block)
+
 			buddy = block.getBuddy()
 
 		# Se reafirma la cabeza de la lista
 		if block.prev is None:
 			self.head = block
+
+		return block
 
 	def show(self):
 		# El estado de la memoria actual
@@ -101,3 +176,12 @@ class Memory():
 		print("\n\nLISTAS DE BLOQUES LIBRES")
 		for i in range(len(self.unasigned)):
 			print(f"{2**i}: {self.unasigned[i]}")
+
+	def getPartition(self):
+		partition = []
+		block = self.head
+		while block is not None:
+			partition.append(block)
+			block = block.next
+
+		return partition
